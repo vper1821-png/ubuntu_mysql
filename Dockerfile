@@ -15,21 +15,15 @@ RUN apt-get update && \
         iputils-ping \
         && rm -rf /var/lib/apt/lists/*
 
-# Configurar MySQL: arrancar el servicio, configurar y detenerlo
-RUN service mysql start && \
-    mysql -e "CREATE DATABASE IF NOT EXISTS mydb;" && \
-    mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'rootpassword';" && \
-    mysql -e "FLUSH PRIVILEGES;" && \
-    service mysql stop
-
-# Configurar SSH
+# Configurar SSH (contraseña root y permitir login)
 RUN echo 'root:rootpassword' | chpasswd && \
-    sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+    sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
+    ssh-keygen -A
 
-# Generar claves SSH
-RUN ssh-keygen -A
+# Copiar script de entrada y dar permisos
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 EXPOSE 3306 22
 
-# Comando de inicio (mantiene servicios activos)
-CMD service mysql start && service ssh start && tail -f /dev/null
+ENTRYPOINT ["/entrypoint.sh"]
