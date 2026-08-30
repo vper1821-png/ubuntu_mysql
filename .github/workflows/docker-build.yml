@@ -3,8 +3,10 @@ name: Build and Push Docker Image
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
+
+permissions:
+  contents: read
+  packages: write
 
 jobs:
   build:
@@ -21,11 +23,13 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.GHCR_TOKEN }}   # <--- Usa el secreto que creaste
 
       - name: Build and push
         uses: docker/build-push-action@v4
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ github.repository }}/ubuntu-mysql-ssh:latest
+          tags: |
+            ghcr.io/${{ github.repository }}/ubuntu-mysql-ssh:latest
+            ghcr.io/${{ github.repository }}/ubuntu-mysql-ssh:${{ github.sha }}
