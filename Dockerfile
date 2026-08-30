@@ -1,9 +1,8 @@
 FROM ubuntu:20.04
 
-# Evitar prompts interactivos de apt
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Instalar paquetes necesarios
+# Instalar paquetes
 RUN apt-get update && \
     apt-get install -y \
         mysql-server \
@@ -16,24 +15,21 @@ RUN apt-get update && \
         iputils-ping \
         && rm -rf /var/lib/apt/lists/*
 
-# Configurar MySQL (crear base de datos y usuario root)
-# Esperamos a que MySQL esté realmente disponible antes de ejecutar comandos
-RUN service mysql start && \
-    sleep 5 && \
-    mysql -e "CREATE DATABASE IF NOT EXISTS mydb;" && \
-    mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'rootpassword';" && \
-    mysql -e "FLUSH PRIVILEGES;" && \
-    service mysql stop
+# Configurar MySQL usando mysqld --bootstrap (sin necesidad de iniciar el servicio)
+RUN mysqld --bootstrap <<EOF
+CREATE DATABASE IF NOT EXISTS mydb;
+ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'rootpassword';
+FLUSH PRIVILEGES;
+EOF
 
-# Configurar SSH (root con password)
+# Configurar SSH
 RUN echo 'root:rootpassword' | chpasswd && \
     sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
 
 # Generar claves SSH
 RUN ssh-keygen -A
 
-# Exponer puertos
 EXPOSE 3306 22
 
-# Script de inicio para mantener ambos servicios
+# Script de inicio (mantiene ambos servicios activos)
 CMD service mysql start && service ssh start && tail -f /dev/null
