@@ -1,10 +1,6 @@
 #!/bin/bash
 set -e
 
-# Configurar MySQL para escuchar en todas las interfaces
-echo ">> Configurando MySQL para aceptar conexiones remotas..."
-sed -i 's/^bind-address\s*=\s*127.0.0.1/bind-address = 0.0.0.0/' /etc/mysql/mysql.conf.d/mysqld.cnf || echo "bind-address = 0.0.0.0" >> /etc/mysql/mysql.conf.d/mysqld.cnf
-
 # Si el directorio de datos está vacío, inicializar MySQL
 if [ ! -d "/var/lib/mysql/mysql" ]; then
     echo ">> Inicializando base de datos MySQL por primera vez..."
@@ -13,7 +9,7 @@ if [ ! -d "/var/lib/mysql/mysql" ]; then
     mysqld --user=mysql --datadir=/var/lib/mysql --skip-networking --socket=/var/run/mysqld/mysqld.sock &
     # Esperar a que el socket esté disponible
     while [ ! -S /var/run/mysqld/mysqld.sock ]; do sleep 1; done
-    # Configurar root con contraseña, permitir acceso remoto y crear base de datos
+    # Configurar root con contraseña, crear base de datos y permitir conexiones remotas
     mysql -u root --socket=/var/run/mysqld/mysqld.sock <<EOF
 CREATE DATABASE IF NOT EXISTS mydb;
 ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'rootpassword';
@@ -26,6 +22,14 @@ EOF
     echo ">> Configuración inicial completada."
 else
     echo ">> Base de datos ya inicializada."
+fi
+
+# Configurar MySQL para escuchar en todas las interfaces (si no está ya configurado)
+if grep -q "^bind-address\s*=\s*127.0.0.1" /etc/mysql/mysql.conf.d/mysqld.cnf; then
+    echo ">> Configurando MySQL para escuchar en todas las interfaces..."
+    sed -i 's/^bind-address\s*=\s*127.0.0.1/bind-address = 0.0.0.0/' /etc/mysql/mysql.conf.d/mysqld.cnf
+else
+    echo ">> MySQL ya está configurado para escuchar en todas las interfaces."
 fi
 
 # Iniciar servicios en primer plano
